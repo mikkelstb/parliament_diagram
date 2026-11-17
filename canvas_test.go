@@ -3,7 +3,7 @@ package parliament_test
 import (
 	"testing"
 
-	"github.com/mikkelstb/parliament"
+	parliament "github.com/mikkelstb/parliament_diagram"
 )
 
 func TestDrawing(t *testing.T) {

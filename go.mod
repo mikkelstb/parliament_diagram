@@ -1,4 +1,4 @@
-module github.com/mikkelstb/parliament
+module github.com/mikkelstb/parliament_diagram
 
 go 1.27.3
 
