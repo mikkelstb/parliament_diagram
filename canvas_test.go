@@ -1,6 +1,7 @@
 package parliament_test
 
 import (
+	"path/filepath"
 	"testing"
 
 	parliament "github.com/mikkelstb/parliament_diagram"
@@ -14,7 +15,7 @@ func TestDrawing(t *testing.T) {
 	p.Rows = 7
 
 	p.SetAngle(180)
-	if err := p.Draw(); err != nil {
+	if err := p.AsFile(filepath.Join(t.TempDir(), "parliament.png")); err != nil {
 		t.Fatal(err)
 	}
 }

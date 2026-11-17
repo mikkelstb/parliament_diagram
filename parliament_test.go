@@ -3,6 +3,7 @@ package parliament
 import (
 	"bytes"
 	"image/color"
+	"image/png"
 	"io"
 	"math"
 	"os"
@@ -62,7 +63,7 @@ func TestDrawColorsSeatsLeftToRightByPartyOrder(t *testing.T) {
 	p.Seats = 4
 	p.AddParty(Party{Name: "A", Seats: 1, Color: colornames.Red})
 	p.AddParty(Party{Name: "B", Seats: 1, Color: colornames.Blue})
-	if err := p.Draw(); err != nil {
+	if err := p.AsFile(filepath.Join(t.TempDir(), "parliament.png")); err != nil {
 		t.Fatal(err)
 	}
 
@@ -87,7 +88,7 @@ func TestDrawColorsFollowArcOrderAbove180Degrees(t *testing.T) {
 	p.SetAngle(240)
 	p.AddParty(Party{Name: "A", Seats: 1, Color: colornames.Red})
 	p.AddParty(Party{Name: "B", Seats: 1, Color: colornames.Blue})
-	if err := p.Draw(); err != nil {
+	if err := p.AsFile(filepath.Join(t.TempDir(), "parliament.png")); err != nil {
 		t.Fatal(err)
 	}
 
@@ -110,7 +111,7 @@ func TestDrawUsesConfiguredWidth(t *testing.T) {
 	p := NewParliamentWithWidth(40, 2, 320)
 	p.Rows = 1
 	p.Seats = 4
-	if err := p.DrawPNG(filepath.Join(t.TempDir(), "parliament.png")); err != nil {
+	if err := p.AsFile(filepath.Join(t.TempDir(), "parliament.png")); err != nil {
 		t.Fatal(err)
 	}
 
@@ -135,10 +136,10 @@ func TestDrawLeavesSeatRadiusMargin(t *testing.T) {
 	p.AddParty(Party{Name: "Sverigedemokraterna", Symbol: "SD", Abbrev: "SD", Color: colornames.Yellow, Seats: 62})
 
 	filename := filepath.Join(t.TempDir(), "parliament.png")
-	if err := p.DrawPNG(filename); err != nil {
+	if err := p.AsFile(filename); err != nil {
 		t.Fatal(err)
 	}
-	reader, err := p.Reader()
+	reader, err := p.AsReader()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,17 +189,13 @@ func TestDrawLeavesSeatRadiusMargin(t *testing.T) {
 }
 
 func TestDrawSVG(t *testing.T) {
-	p := NewParliament(40, 2)
+	p := NewParliamentWithRenderer(40, 2, NewSVGRenderer())
 	p.Rows = 1
 	p.Seats = 1
 	p.AddParty(Party{Name: "A", Seats: 1, Color: colornames.Red})
 	filename := filepath.Join(t.TempDir(), "parliament.svg")
 
-	if err := p.DrawSVG(filename); err != nil {
-		t.Fatal(err)
-	}
-	reader, err := p.Reader()
-	if err != nil {
+	if err := p.AsFile(filename); err != nil {
 		t.Fatal(err)
 	}
 	data, err := os.ReadFile(filename)
@@ -208,12 +205,39 @@ func TestDrawSVG(t *testing.T) {
 	if !strings.Contains(string(data), `<svg `) || !strings.Contains(string(data), `fill="#ff0000"`) {
 		t.Fatalf("SVG output does not contain expected root and party color: %s", data)
 	}
+
+	reader, err := p.AsReader()
+	if err != nil {
+		t.Fatal(err)
+	}
 	readerData, err := io.ReadAll(reader)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(readerData, data) {
 		t.Fatal("returned SVG reader does not match the saved file")
+	}
+}
+
+func TestAsReaderRendersPNGWithoutFileOutput(t *testing.T) {
+	p := NewParliament(40, 2)
+	p.Rows = 1
+	p.Seats = 1
+	p.AddParty(Party{Name: "A", Seats: 1, Color: colornames.Red})
+	reader, err := p.AsReader()
+	if err != nil {
+		t.Fatal(err)
+	}
+	readerData, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	image, err := png.Decode(bytes.NewReader(readerData))
+	if err != nil {
+		t.Fatalf("AsReader() did not return a PNG: %v", err)
+	}
+	if image.Bounds().Dx() != p.canvasWidth {
+		t.Fatalf("PNG width = %d, want %d", image.Bounds().Dx(), p.canvasWidth)
 	}
 }
 

@@ -11,9 +11,10 @@ import (
 )
 
 type Parliament struct {
-	canvas Canvas
-	Seats  int
-	Rows   int
+	canvas   Canvas
+	renderer Renderer
+	Seats    int
+	Rows     int
 
 	angle float64
 
@@ -26,14 +27,23 @@ type Parliament struct {
 }
 
 func NewParliament(inner_radius, seat_radius float64) *Parliament {
-	return NewParliamentWithWidth(inner_radius, seat_radius, 800)
+	return NewParliamentWithWidthAndRenderer(inner_radius, seat_radius, 800, NewPNGRenderer())
+}
+
+func NewParliamentWithRenderer(inner_radius, seat_radius float64, renderer Renderer) *Parliament {
+	return NewParliamentWithWidthAndRenderer(inner_radius, seat_radius, 800, renderer)
 }
 
 func NewParliamentWithWidth(inner_radius, seat_radius float64, width int) *Parliament {
+	return NewParliamentWithWidthAndRenderer(inner_radius, seat_radius, width, NewPNGRenderer())
+}
+
+func NewParliamentWithWidthAndRenderer(inner_radius, seat_radius float64, width int, renderer Renderer) *Parliament {
 	p := &Parliament{
 		inner_radius: inner_radius,
 		seat_radius:  seat_radius,
 		canvasWidth:  width,
+		renderer:     renderer,
 		// default angle is 180 degrees
 		angle: math.Pi,
 	}
@@ -135,20 +145,16 @@ func (p *Parliament) SetAngle(degrees int) {
 	p.angle = float64(degrees) * math.Pi / 180
 }
 
-func (p *Parliament) Draw() error {
-	return p.DrawPNG("out.png")
+func (p *Parliament) AsFile(filename string) error {
+	if err := p.render(); err != nil {
+		return err
+	}
+
+	return p.canvas.Save(filename)
 }
 
-func (p *Parliament) DrawPNG(filename string) error {
-	return p.DrawWith(NewPNGRenderer(), filename)
-}
-
-func (p *Parliament) DrawSVG(filename string) error {
-	return p.DrawWith(NewSVGRenderer(), filename)
-}
-
-func (p *Parliament) DrawWith(renderer Renderer, filename string) error {
-	if renderer == nil {
+func (p *Parliament) render() error {
+	if p.renderer == nil {
 		return fmt.Errorf("renderer must not be nil")
 	}
 	if p.canvasWidth <= 0 {
@@ -232,7 +238,7 @@ func (p *Parliament) DrawWith(renderer Renderer, filename string) error {
 	if height < 1 {
 		height = 1
 	}
-	p.canvas = *newCanvas(p.canvasWidth, height, renderer)
+	p.canvas = *newCanvas(p.canvasWidth, height, p.renderer)
 	p.canvas.scale = scale
 	p.canvas.originX = (padding - minX) * scale
 	p.canvas.originY = (padding + maxY) * scale
@@ -241,12 +247,12 @@ func (p *Parliament) DrawWith(renderer Renderer, filename string) error {
 		p.canvas.DrawCircle(point.x, point.y, p.seat_radius, point.color)
 	}
 
-	return p.canvas.Save(filename)
+	return nil
 }
 
-func (p *Parliament) Reader() (io.Reader, error) {
-	if p.canvas.renderer == nil {
-		return nil, fmt.Errorf("draw before requesting the rendered data")
+func (p *Parliament) AsReader() (io.Reader, error) {
+	if err := p.render(); err != nil {
+		return nil, err
 	}
 	return p.canvas.Reader()
 }

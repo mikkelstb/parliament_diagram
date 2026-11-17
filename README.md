@@ -4,7 +4,7 @@ Parliament is a small Go library for generating semicircular seating charts. Sea
 
 ## Usage
 
-Create a parliament with an inner row radius and a seat radius. The default output width is 800 pixels; use `NewParliamentWithWidth` to choose another fixed width. The image height is calculated to fit the seating chart.
+Create a parliament with an inner row radius and a seat radius. The default renderer is PNG; use a different renderer in the constructor to select another format. The default output width is 800 pixels; use the width variants to choose another fixed width.
 
 ```go
 package main
@@ -18,7 +18,7 @@ import (
 )
 
 func main() {
-	p := parliament.NewParliamentWithWidth(140, 10, 1000)
+	p := parliament.NewParliamentWithWidthAndRenderer(140, 10, 1000, parliament.NewSVGRenderer())
 	p.Seats = 349
 	p.Rows = 10
 	p.SetAngle(180)
@@ -34,12 +34,11 @@ func main() {
 		Color: colornames.Blue,
 	})
 
-	if err := p.DrawSVG("parliament.svg"); err != nil {
+	if err := p.AsFile("parliament.svg"); err != nil {
 		panic(err)
 	}
 
-	// Reader returns the rendered data for the most recent draw.
-	reader, err := p.Reader()
+	reader, err := p.AsReader()
 	if err != nil {
 		panic(err)
 	}
@@ -49,15 +48,13 @@ func main() {
 }
 ```
 
-`NewParliament(innerRadius, seatRadius)` is equivalent to using `NewParliamentWithWidth(innerRadius, seatRadius, 800)`. The default angle is 180 degrees; call `SetAngle` to change it.
+`NewParliament(innerRadius, seatRadius)` is equivalent to using `NewParliamentWithWidth(innerRadius, seatRadius, 800)`. Use `NewParliamentWithRenderer` or `NewParliamentWithWidthAndRenderer` to select an output format. The default angle is 180 degrees; call `SetAngle` to change it.
 
 ## Rendering
 
-- `DrawPNG(filename)` writes a PNG file.
-- `DrawSVG(filename)` writes an SVG file.
-- `Draw()` writes a PNG file named `out.png`.
-- `DrawWith(renderer, filename)` renders using a custom implementation of the `Renderer` interface.
-- `Reader()` returns an `io.Reader` for the data from the most recent successful draw. Call it after a draw method.
+- `AsFile(filename)` renders with the selected renderer and writes the result to a file.
+- `AsReader()` renders with the selected renderer and returns an `io.Reader`.
+- Choose PNG or SVG at construction with `NewPNGRenderer()` or `NewSVGRenderer()`. A custom implementation of the `Renderer` interface can also be selected.
 
 The drawing uses the configured width and scales the seating chart proportionally to fit, including a margin around the seats. Its height varies with the chart dimensions.
 
